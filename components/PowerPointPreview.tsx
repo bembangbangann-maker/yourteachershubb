@@ -5,6 +5,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { toast } from 'react-hot-toast';
 import ReactDOM from 'react-dom/client';
+import PptxGenJS from 'pptxgenjs';
 
 interface PowerPointPreviewProps {
   slides: SlideContent[];
@@ -122,46 +123,41 @@ const PowerPointPreview: React.FC<PowerPointPreviewProps> = ({ slides, onThemeCh
         }
     };
 
-    return (
-        <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center p-4 border-b border-base-300">
-                <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-lg">Presentation Preview</h3>
-                    <span className="text-sm text-base-content/70">({currentSlide + 1} / {slides.length})</span>
-                </div>
-                 <button onClick={handleDownloadPdf} disabled={isDownloading} className="flex items-center bg-secondary hover:bg-secondary-focus text-white font-bold py-2 px-4 rounded-lg">
-                    <DownloadIcon className="w-5 h-5 mr-2"/>
-                    {isDownloading ? 'Generating...' : 'Download as PDF'}
-                </button>
-            </div>
-            
-            <div className="flex-grow p-4 min-h-0">
-                <div className={`w-full h-full aspect-video rounded-lg shadow-lg ${selectedTheme}`}>
-                    {slides.length > 0 && <Slide slide={slides[currentSlide]} />}
-                </div>
-            </div>
+    const handleDownloadPptx = async () => {
+        if (slides.length === 0) {
+            toast.error("No slides to generate.");
+            return;
+        }
 
-            <div className="p-4 border-t border-base-300">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold">Theme:</span>
-                        {themes.map(theme => (
-                            <button 
-                                key={theme.id}
-                                title={theme.name}
-                                onClick={() => onThemeChange(theme.id)}
-                                className={`w-8 h-8 rounded-full border-2 ${selectedTheme === theme.id ? 'border-primary scale-110' : 'border-base-300'} ${theme.color} transition-transform`}
-                            />
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setCurrentSlide(p => Math.max(0, p - 1))} disabled={currentSlide === 0} className="p-2 bg-base-300 rounded-md disabled:opacity-50"><ChevronsLeftIcon className="w-5 h-5"/></button>
-                        <button onClick={() => setCurrentSlide(p => Math.min(slides.length - 1, p + 1))} disabled={currentSlide === slides.length - 1} className="p-2 bg-base-300 rounded-md disabled:opacity-50"><ChevronsRightIcon className="w-5 h-5"/></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+        setIsDownloading(true);
+        const toastId = toast.loading('Generating PPTX file...');
 
-export default PowerPointPreview;
+        try {
+            const pres = new PptxGenJS();
+            pres.layout = 'LAYOUT_16x9';
+
+            const themeMap: { [key: string]: { bkgd: string; color: string; titleFont?: string } } = {
+                'pptx-theme-default': { bkgd: 'F0F4F8', color: '333333' },
+                'pptx-theme-notebook': { bkgd: 'FDFDF8', color: '00008B' },
+                'pptx-theme-chalkboard': { bkgd: '3A3A3A', color: 'F0F0F0', titleFont: 'Courier New' },
+                'pptx-theme-blueprint': { bkgd: '2A4365', color: 'FFFFFF' },
+                'pptx-theme-books': { bkgd: 'F7F3E9', color: '4A4033' },
+            };
+            const theme = themeMap[selectedTheme] || themeMap['pptx-theme-default'];
+
+            for (const slideData of slides) {
+                const slide = pres.addSlide();
+                slide.background = { color: theme.bkgd };
+
+                const commonTextOptions = { color: theme.color, fontFace: theme.titleFont || 'Arial' };
+                const bodyFont = { fontFace: 'Arial' };
+
+                if (slideData.type === 'title') {
+                    if (slideData.image) {
+                        slide.addImage({
+                            data: `data:image/png;base64,${slideData.image}`,
+                            x: '35%', y: '10%', w: '30%', h: '35%',
+                        });
+                    }
+                    slide.addText(slideData.title || '', {
+                        x: 0.5, y: slide
