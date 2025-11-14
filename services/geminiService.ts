@@ -364,11 +364,11 @@ export const generateDlpContent = async (details: { gradeLevel: string; learning
 **CRITICAL INSTRUCTIONS:**
 1.  **Procedure Structure:** ${procedureInstruction}
 2.  **Evaluation Section:** The 'evaluationQuestions' array **must contain exactly 5 multiple-choice questions**. Each question must have at least three options and a correct answer. The final procedure step MUST be about administering this evaluation.
-3.  **Rich Content Formatting:** You MUST provide detailed, non-placeholder content for EVERY procedure step.
-    - Use Markdown for emphasis: use **bold** and *italics* for important keywords. Use ALL CAPS for very important headings or terms.
-    - Structure discussions clearly. Include specific Teacher's Activities and Learner's Activities. When asking questions, use headings like "**LOTS Questions:**" or "**HOTS Questions:**" where appropriate.
-    - Formative assessment activities MUST include a clear title, formatted like "**Activity Title:** [Your Title Here]".
-4.  **PPST Indicators:** For each procedure, provide a relevant PPST COI based on DepEd Order No. 14, s. 2023 for a ${teacherPosition} teacher.
+3.  **Rich Content Formatting:** You MUST provide detailed, non-placeholder content for EVERY procedure step's 'content' field.
+    - Structure discussions clearly. Instead of generic "Teacher's Activity" and "Learner's Activity" headings, create engaging activities with specific names (e.g., "**Activity: Word Hunt**", "**Group Discussion: Exploring Themes**"). Describe both the teacher's instructions and the expected student actions.
+    - Use Markdown for emphasis: use **bold** and *italics*. Use ALL CAPS for very important headings.
+    - When asking questions, use headings like "**LOTS Questions:**" or "**HOTS Questions:**".
+4.  **PPST Indicators:** For each procedure, provide a relevant PPST COI based on DepEd Order No. 14, s. 2023 for a ${teacherPosition} teacher. The indicator text MUST be the full, descriptive text, not just the code. Example: "Indicator 1.1.2: Apply knowledge of content within and across curriculum teaching areas."
 
 Generate the output as a single, valid JSON object that strictly adheres to the provided schema. Do not include any extra text or markdown formatting outside of the JSON structure.`;
 

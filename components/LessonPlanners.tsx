@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAppContext } from '../contexts/AppContext';
-import { generateDlpContent, generateQuizContent, generateRubricForActivity, generateDllContent, generateLearningActivitySheet } from '../services/geminiService';
-import { DlpContent, GeneratedQuiz, QuizType, DlpRubricItem, GeneratedQuizSection, DllContent, DlpProcedure, LearningActivitySheet, SchoolSettings } from '../types';
+import { generateDlpContent, generateQuizContent, generateRubricForActivity, generateDllContent, generateLearningActivitySheet, generateImageForTopic } from '../services/geminiService';
+import { DlpContent, GeneratedQuiz, QuizType, DlpRubricItem, GeneratedQuizSection, DllContent, DlpProcedure, LearningActivitySheet, SchoolSettings, SlideContent } from '../types';
 import Header from './Header';
 import { SparklesIcon, DownloadIcon, ClipboardCheckIcon } from './icons';
 import { docxService } from '../services/docxService';
+import PowerPointPreview from './PowerPointPreview';
 
 const TabButton: React.FC<{ label: string, icon: React.ReactNode, isActive: boolean, onClick: () => void }> = ({ label, icon, isActive, onClick }) => (
     <button onClick={onClick} className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors border-b-2 ${isActive ? 'border-primary text-primary' : 'border-transparent text-base-content/70 hover:text-base-content'}`}>
@@ -67,6 +68,9 @@ const LessonPlanners: React.FC = () => {
         dlpFormat: 'Standard DepEd',
     });
     const [dlpContent, setDlpContent] = useState<DlpContent | null>(null);
+    const [powerPointSlides, setPowerPointSlides] = useState<SlideContent[] | null>(null);
+    const [isGeneratingPpt, setIsGeneratingPpt] = useState(false);
+    const [selectedPptTheme, setSelectedPptTheme] = useState('pptx-theme-default');
 
     // Quiz State
     const [quizForm, setQuizForm] = useState({
@@ -111,12 +115,10 @@ const LessonPlanners: React.FC = () => {
     });
     const [lasContent, setLasContent] = useState<LearningActivitySheet | null>(null);
 
-
-    // Persist form state to localStorage
     useEffect(() => {
         const savedState = localStorage.getItem('lessonPlannersState');
         if (savedState) {
-            const { dlpForm: savedDlp, dllForm: savedDll, quizForm: savedQuiz, lasForm: savedLas, activeTab: savedTab, dlpContent: savedDlpContent, dllContent: savedDllContent, quizContent: savedQuizContent, lasContent: savedLasContent, teacherPosition: savedTeacherPosition, dllFormat: savedDllFormat } = JSON.parse(savedState);
+            const { dlpForm: savedDlp, dllForm: savedDll, quizForm: savedQuiz, lasForm: savedLas, activeTab: savedTab, dlpContent: savedDlpContent, dllContent: savedDllContent, quizContent: savedQuizContent, lasContent: savedLasContent, teacherPosition: savedTeacherPosition, dllFormat: savedDllFormat, powerPointSlides: savedSlides, selectedPptTheme: savedTheme } = JSON.parse(savedState);
             if (savedDlp) setDlpForm(prev => ({...prev, ...savedDlp}));
             if (savedDll) setDllForm(prev => ({...prev, ...savedDll}));
             if (savedQuiz) setQuizForm(prev => ({...prev, ...savedQuiz}));
@@ -128,14 +130,15 @@ const LessonPlanners: React.FC = () => {
             if (savedLasContent) setLasContent(savedLasContent);
             if (savedTeacherPosition) setTeacherPosition(savedTeacherPosition);
             if (savedDllFormat) setDllFormat(savedDllFormat);
+            if (savedSlides) setPowerPointSlides(savedSlides);
+            if (savedTheme) setSelectedPptTheme(savedTheme);
         }
     }, []);
 
     useEffect(() => {
-        const stateToSave = { dlpForm, dllForm, quizForm, lasForm, activeTab, dlpContent, dllContent, quizContent, lasContent, teacherPosition, dllFormat };
+        const stateToSave = { dlpForm, dllForm, quizForm, lasForm, activeTab, dlpContent, dllContent, quizContent, lasContent, teacherPosition, dllFormat, powerPointSlides, selectedPptTheme };
         localStorage.setItem('lessonPlannersState', JSON.stringify(stateToSave));
-    }, [dlpForm, dllForm, quizForm, lasForm, activeTab, dlpContent, dllContent, quizContent, lasContent, teacherPosition, dllFormat]);
-
+    }, [dlpForm, dllForm, quizForm, lasForm, activeTab, dlpContent, dllContent, quizContent, lasContent, teacherPosition, dllFormat, powerPointSlides, selectedPptTheme]);
 
     useEffect(() => {
         setDlpForm(prev => ({
@@ -242,6 +245,7 @@ const LessonPlanners: React.FC = () => {
         }
         setIsLoading(true);
         setDlpContent(null);
+        setPowerPointSlides(null); // Reset PPT slides on new generation
         const toastId = toast.loading('Generating Daily Lesson Plan...', {
             style: { background: 'var(--info)', color: 'white' },
             iconTheme: { primary: 'white', secondary: 'var(--info)' },
@@ -429,6 +433,62 @@ const LessonPlanners: React.FC = () => {
             toast.error(message, { id: toastId });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleGeneratePowerPoint = async () => {
+        if (!dlpContent) return;
+        setIsGeneratingPpt(true);
+        const toastId = toast.loading('Generating presentation...');
+    
+        try {
+            toast.loading('Generating title slide image...', { id: toastId });
+            const titleImage = await generateImageForTopic(dlpContent.topic);
+    
+            toast.loading('Assembling slides...', { id: toastId });
+            const slides: SlideContent[] = [];
+    
+            slides.push({
+                type: 'title',
+                title: dlpContent.topic,
+                subtitle: `Grade ${dlpForm.gradeLevel} ${dlpForm.subject}`,
+                image: titleImage || undefined,
+                content: ''
+            });
+    
+            slides.push({
+                type: 'objectives',
+                title: 'Learning Objectives',
+                content: dlpForm.lessonObjective.split('\n').filter(Boolean),
+            });
+    
+            dlpContent.procedures.forEach(proc => {
+                if (!proc.title.toLowerCase().includes('evaluat')) {
+                    slides.push({
+                        type: 'content',
+                        title: proc.title,
+                        content: proc.content
+                    });
+                }
+            });
+    
+            dlpContent.evaluationQuestions.forEach((question, index) => {
+                slides.push({
+                    type: 'quiz',
+                    title: `Evaluating Learning - Question ${index + 1}`,
+                    quizQuestion: question,
+                    content: question.questionText
+                });
+            });
+            
+            setPowerPointSlides(slides);
+            toast.success('Presentation ready for preview!', { id: toastId });
+        } catch (error) {
+            let message = "Failed to generate presentation.";
+            if (error instanceof Error) message = error.message;
+            toast.error(message, { id: toastId });
+        } finally {
+            setIsGeneratingPpt(false);
         }
     };
 
@@ -776,12 +836,32 @@ const LessonPlanners: React.FC = () => {
                         
                         {!isLoading && dlpContent && activeTab === 'dlp' && (
                             <>
-                                <div className="p-4 border-b border-base-300 flex justify-between items-center flex-shrink-0"><h3 className="text-xl font-bold">Generated DLP</h3><button onClick={handleDownloadDlpDocx} disabled={isLoading} className="flex items-center bg-secondary hover:bg-secondary-focus text-white font-bold py-2 px-4 rounded-lg"><DownloadIcon className="w-5 h-5 mr-2"/>Download Word File</button></div>
-                                <div className="p-6 overflow-y-auto flex-grow min-h-0 dlp-preview">
-                                    <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: dlpOutputHtml.mainContent }}></div>
-                                    <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: dlpOutputHtml.reflectionTableHtml }}></div>
-                                    <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: dlpOutputHtml.answerKeyHtml }}></div>
-                                </div>
+                                {powerPointSlides ? (
+                                    <PowerPointPreview 
+                                        slides={powerPointSlides}
+                                        selectedTheme={selectedPptTheme}
+                                        onThemeChange={setSelectedPptTheme}
+                                    />
+                                ) : (
+                                    <>
+                                        <div className="p-4 border-b border-base-300 flex justify-between items-center flex-shrink-0">
+                                            <h3 className="text-xl font-bold">Generated DLP</h3>
+                                            <div className="flex gap-2">
+                                                <button onClick={handleGeneratePowerPoint} disabled={isGeneratingPpt} className="flex items-center bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg">
+                                                    <SparklesIcon className="w-5 h-5 mr-2" />{isGeneratingPpt ? 'Generating...' : 'Make PowerPoint'}
+                                                </button>
+                                                <button onClick={handleDownloadDlpDocx} disabled={isLoading} className="flex items-center bg-secondary hover:bg-secondary-focus text-white font-bold py-2 px-4 rounded-lg">
+                                                    <DownloadIcon className="w-5 h-5 mr-2"/>Download Word File
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="p-6 overflow-y-auto flex-grow min-h-0 dlp-preview">
+                                            <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: dlpOutputHtml.mainContent }}></div>
+                                            <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: dlpOutputHtml.reflectionTableHtml }}></div>
+                                            <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: dlpOutputHtml.answerKeyHtml }}></div>
+                                        </div>
+                                    </>
+                                )}
                             </>
                         )}
 

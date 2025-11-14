@@ -160,4 +160,101 @@ const PowerPointPreview: React.FC<PowerPointPreviewProps> = ({ slides, onThemeCh
                         });
                     }
                     slide.addText(slideData.title || '', {
-                        x: 0.5, y: slide
+                        x: 0.5, y: slideData.image ? '50%' : '40%', w: '90%', h: '20%',
+                        align: 'center', fontSize: 48, bold: true, ...commonTextOptions
+                    });
+                    if (slideData.subtitle) {
+                        slide.addText(slideData.subtitle, {
+                            x: 0.5, y: slideData.image ? '70%' : '60%', w: '90%', h: '10%',
+                            align: 'center', fontSize: 24, ...commonTextOptions
+                        });
+                    }
+                } else { // 'content', 'objectives', 'quiz'
+                    slide.addText(slideData.title || '', {
+                        x: 0.5, y: 0.25, w: '90%', h: 0.75,
+                        fontSize: 32, bold: true, ...commonTextOptions
+                    });
+
+                    let bodyText: (string | { text: string; options: any })[] = [];
+
+                    if (slideData.type === 'quiz' && slideData.quizQuestion) {
+                        bodyText.push({ text: slideData.quizQuestion.questionText, options: { ...bodyFont, fontSize: 22, bold: true, paraSpaceAfter: 10 } });
+                        if (slideData.quizQuestion.options) {
+                            slideData.quizQuestion.options.forEach(opt => {
+                                bodyText.push({ text: opt, options: { ...bodyFont, fontSize: 18 } });
+                            });
+                        }
+                    } else {
+                        const contentArray = Array.isArray(slideData.content) ? slideData.content : slideData.content.split('\n');
+                        bodyText = contentArray.filter(line => line.trim()).map(line => ({ text: line, options: { ...bodyFont, fontSize: 18 } }));
+                    }
+
+                    if (bodyText.length > 0) {
+                        slide.addText(bodyText, {
+                            x: 0.5, y: 1.2, w: '90%', h: 4,
+                            bullet: true, color: theme.color,
+                        });
+                    }
+                }
+            }
+
+            await pres.writeFile({ fileName: `${slides[0].title?.replace(/\s/g, '_') || 'presentation'}.pptx` });
+            toast.success('PPTX downloaded successfully!', { id: toastId });
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to generate PPTX file. It might be too complex.', { id: toastId });
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="flex justify-between items-center p-4 border-b border-base-300">
+                <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-lg">Presentation Preview</h3>
+                    <span className="text-sm text-base-content/70">({currentSlide + 1} / {slides.length})</span>
+                </div>
+                 <div className="flex items-center rounded-lg">
+                    <button onClick={handleDownloadPdf} disabled={isDownloading} className="flex items-center bg-secondary hover:bg-secondary-focus text-white font-bold py-2 px-4 rounded-l-lg disabled:opacity-50">
+                        <DownloadIcon className="w-5 h-5 mr-2"/>
+                        <span>{isDownloading ? 'Generating...' : 'PDF'}</span>
+                    </button>
+                    <div className="h-full w-px bg-base-300"></div>
+                    <button onClick={handleDownloadPptx} disabled={isDownloading} className="flex items-center bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-r-lg disabled:opacity-50">
+                        <DownloadIcon className="w-5 h-5 mr-2"/>
+                        <span>{isDownloading ? 'Generating...' : 'PPTX'}</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div className="flex-grow p-4 min-h-0">
+                <div className={`w-full h-full aspect-video rounded-lg shadow-lg ${selectedTheme}`}>
+                    {slides.length > 0 && <Slide slide={slides[currentSlide]} />}
+                </div>
+            </div>
+
+            <div className="p-4 border-t border-base-300">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">Theme:</span>
+                        {themes.map(theme => (
+                            <button 
+                                key={theme.id}
+                                title={theme.name}
+                                onClick={() => onThemeChange(theme.id)}
+                                className={`w-8 h-8 rounded-full border-2 ${selectedTheme === theme.id ? 'border-primary scale-110' : 'border-base-300'} ${theme.color} transition-transform`}
+                            />
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setCurrentSlide(p => Math.max(0, p - 1))} disabled={currentSlide === 0} className="p-2 bg-base-300 rounded-md disabled:opacity-50"><ChevronsLeftIcon className="w-5 h-5"/></button>
+                        <button onClick={() => setCurrentSlide(p => Math.min(slides.length - 1, p + 1))} disabled={currentSlide === slides.length - 1} className="p-2 bg-base-300 rounded-md disabled:opacity-50"><ChevronsRightIcon className="w-5 h-5"/></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default PowerPointPreview;
