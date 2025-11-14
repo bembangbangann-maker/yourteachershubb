@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Teacher's Administrative Hub</title>
+
+    <!-- PWA Manifest & Theme -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#38B2AC">
+
+    <!-- iOS PWA Support -->
+    <link rel="apple-touch-icon" href="/vite.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Teacher's Hub">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&family=Dancing+Script:wght@400;700&family=Lobster&family=Roboto+Slab:wght@400;700&family=Alegreya:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Sacramento&family=Cinzel:wght@400;700&family=EB+Garamond:wght@400;700&family=Tangerine:wght@400;700&family=Pinyon+Script&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400;1,700&family=Arvo:ital,wght@0,400;0,700;1,400;1,700&family=Alex+Brush&family=Allura&family=Italianno&family=Meddon&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-hot-toast": "https://aistudiocdn.com/react-hot-toast@^2.6.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.5",
+    "xlsx": "https://aistudiocdn.com/xlsx@^0.18.5",
+    "mammoth": "https://aistudiocdn.com/mammoth@^1.11.0",
+    "docx": "https://aistudiocdn.com/docx@^9.5.1",
+    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.3",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
+    "canvas-confetti": "https://aistudiocdn.com/canvas-confetti@^1.9.4",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "@vercel/node": "https://aistudiocdn.com/@vercel/node@^5.5.5"
+  }
+}
+</script>
+</head>
+  <body class="bg-base-100 text-base-content">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          }, err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
